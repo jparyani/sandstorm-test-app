@@ -51,7 +51,7 @@ print >>sys.stderr, 'test'
 wakelock = cap.stayAwake(notification=OngoingNotification(), displayInfo={"caption": {"defaultText": "background test"}}).wait()
 print >>sys.stderr, 'test2'
 print >>sys.stderr, wakelock
-time.sleep(5)
+time.sleep(15)
 
 del wakelock
 capnp.wait_forever()
