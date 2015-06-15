@@ -19,6 +19,8 @@ const pkgdef :Spk.PackageDefinition = (
 
     appVersion = 0,  # Increment this for every release.
 
+    appTitle = (defaultText = "SandstormTest"),
+    appMarketingVersion = (defaultText = "0.0.0"),
     actions = [
       # Define your "new document" handlers here.
       ( title = (defaultText = "New SandstormTest"),
@@ -68,7 +70,7 @@ const pkgdef :Spk.PackageDefinition = (
 
 const myCommand :Spk.Manifest.Command = (
   # Here we define the command used to start up your server.
-  argv = ["/sandstorm-http-bridge", "10000", "--", "/home/jason/dotfiles/virtualenvs/main2/bin/python", "main.py"],
+  argv = ["/server"],
   environ = [
     # Note that this defines the *entire* environment seen by your app.
     (key = "PATH", value = "/usr/local/bin:/usr/bin:/bin"),

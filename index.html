@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  </head>
+  <body>
+    <button id="request">Request</button>
+    <button id="offer">Offer</button>
+    <span id="result"></span>
+    <script type='text/javascript'>
+    document.getElementById("request").addEventListener("click", function () {
+      var rpcId = Math.random();
+      window.parent.postMessage({powerboxRequest: {rpcId: rpcId}}, "*");
+      window.addEventListener("message", function (event) {
+         if (event.data.rpcId === rpcId) {
+            if (event.data.error) {
+              console.error("rpc errored:", event.data.error);
+              return;
+            }
+            var xhr = new XMLHttpRequest();
+            xhr.open("PUT", "/", true);
+
+            // Hack to pass bytes through unprocessed.
+            xhr.overrideMimeType("text/plain; charset=x-user-defined");
+
+            xhr.onreadystatechange = function(e) {
+              if (this.readyState == 4 && this.status == 200) {
+                document.getElementById("result").textContent = "request: " + this.responseText;
+              }
+            };
+            xhr.send(event.data.token);
+         }
+       }, false);
+    });
+    document.getElementById("offer").addEventListener("click", function () {
+      var xhr = new XMLHttpRequest();
+      xhr.open("GET", "/offer", true);
+
+      // Hack to pass bytes through unprocessed.
+      xhr.overrideMimeType("text/plain; charset=x-user-defined");
+
+      xhr.onreadystatechange = function(e) {
+        if (this.readyState == 4 && this.status == 200) {
+          document.getElementById("result").textContent = "offer: " + this.responseText;
+        }
+      };
+      xhr.send();
+    });
+    </script>
+  </body>
+</html>
