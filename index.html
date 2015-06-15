@@ -5,7 +5,7 @@
   <body>
     <button id="request">Request</button>
     <button id="offer">Offer</button>
-    <span id="result"></span>
+    <div id="results"></div>
     <script type='text/javascript'>
     document.getElementById("request").addEventListener("click", function () {
       var rpcId = Math.random();
@@ -24,7 +24,10 @@
 
             xhr.onreadystatechange = function(e) {
               if (this.readyState == 4 && this.status == 200) {
-                document.getElementById("result").textContent = "request: " + this.responseText;
+                var res = document.createElement("p");
+                res.setAttribute("id", "request-result");
+                res.textContent = "request: " + this.responseText;
+                document.getElementById("results").appendChild(res);
               }
             };
             xhr.send(event.data.token);
@@ -40,7 +43,10 @@
 
       xhr.onreadystatechange = function(e) {
         if (this.readyState == 4 && this.status == 200) {
-          document.getElementById("result").textContent = "offer: " + this.responseText;
+          var res = document.createElement("p");
+          res.setAttribute("id", "offer-result");
+          res.textContent = "offer: " + this.responseText;
+          document.getElementById("results").appendChild(res);
         }
       };
       xhr.send();
