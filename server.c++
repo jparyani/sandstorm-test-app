@@ -161,8 +161,8 @@ public:
     auto data = params.getContent().getContent();
     auto req = api.restoreRequest();
     req.setToken(data);
-    bool perms[3] = {true, false, true};
-    req.setRequiredPermissions(perms);
+    // bool perms[3] = {true, false, true};
+    // req.setRequiredPermissions(perms);
       KJ_LOG(WARNING, "putting");
     return req.send().then([content](auto args) mutable {
       KJ_LOG(WARNING, "putten");
