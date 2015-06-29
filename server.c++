@@ -160,7 +160,14 @@ public:
     auto params = context.getParams();
     auto data = params.getContent().getContent();
     auto req = api.restoreRequest();
-    req.setToken(data);
+    auto dataString = kj::str(data);
+    kj::String port;
+    KJ_IF_MAYBE(i, dataString.findFirst(' ')) {
+      port = kj::heapString(dataString.slice(0, *i));
+      req.setToken(data.slice(*i + 1, data.size()));
+    } else {
+      KJ_FAIL_REQUIRE("space not found in data");
+    }
     bool perms[1] = {true};
     req.setRequiredPermissions(perms);
       KJ_LOG(WARNING, "putting");
