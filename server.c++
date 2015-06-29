@@ -43,6 +43,7 @@
 #include <sandstorm/grain.capnp.h>
 #include <sandstorm/web-session.capnp.h>
 #include <sandstorm/hack-session.capnp.h>
+#include <sandstorm/ip.capnp.h>
 #include <test.capnp.h>
 
 namespace {
@@ -164,12 +165,21 @@ public:
     bool perms[1] = {true};
     req.setRequiredPermissions(perms);
       KJ_LOG(WARNING, "putting");
-    return req.send().then([content](auto args) mutable {
+    return req.send().then([content, params](auto args) mutable {
       KJ_LOG(WARNING, "putten");
-      return args.getCap().template castAs<TestInterface>().fooRequest().send().then([content](auto args) mutable {
+      auto req = args.getCap().template castAs<sandstorm::IpNetwork>().getRemoteHostByNameRequest();
+      req.setAddress("build.sandstorm.io");
+      auto req2 = req.send().getHost().getTcpPortRequest();
+      req2.setPortNum(80);
+      auto req3 = req2.send().getPort().connectRequest();
+      req3.setDownstream(params.getContext().getResponseStream());
+      auto req4 = req3.send().getUpstream().writeRequest();
+      char * httpReq = "GET / HTTP/1.1\r\nHost: build.sandstorm.io\r\nConnection: close\r\n\r\n";
+      req4.setData(kj::ArrayPtr<kj::byte>((kj::byte*)httpReq, strlen(httpReq)));
+      return req4.send().then([content](auto args) mutable {
         content.setMimeType("text/html");
         content.setStatusCode(sandstorm::WebSession::Response::SuccessCode::OK);
-        content.getBody().setBytes(args.getB().asBytes());
+        content.getBody().setStream(nullptr);
       });
     }, [](kj::Exception err) {
       KJ_LOG(WARNING, "some error putting", err);
