@@ -103,7 +103,7 @@ public:
   WebSessionImpl(sandstorm::UserInfo::Reader userInfo,
                  sandstorm::SessionContext::Client context,
                  sandstorm::WebSession::Params::Reader params,
-                 sandstorm::SandstormApi<>::Client api) : sessionContext(context), api(api) {
+                 sandstorm::SandstormApi<>::Client api) : handle(nullptr), sessionContext(context), api(api) {
     // Permission #0 is "write". Check if bit 0 in the PermissionSet is set.
     auto permissions = userInfo.getPermissions();
     canWrite = permissions.size() > 0 && (permissions[0] & 1);
@@ -154,30 +154,62 @@ public:
     // });
   }
 
+  class TcpPortImpl final : public sandstorm::TcpPort::Server {
+  public:
+    explicit TcpPortImpl(kj::Own<kj::PromiseFulfiller<void>>&& fulfiller) : fulfiller(kj::mv(fulfiller)) {}
+    kj::Promise<void> connect(ConnectContext context) {
+      auto downstream = context.getParams().getDownstream();
+      auto req = downstream.writeRequest();
+      char * data = "tcptest";
+      req.setData(kj::ArrayPtr<kj::byte>((kj::byte*)data, strlen(data)));
+      return req.send().then([KJ_MVCAP(downstream)](auto args) mutable {
+        return downstream.doneRequest().send().then([](auto args) {});
+      });
+    }
+    kj::Own<kj::PromiseFulfiller<void>> fulfiller;
+  };
+
   kj::Promise<void> put(PutContext context) override {
     auto response = context.getResults();
     auto content = response.initContent();
     auto params = context.getParams();
     auto data = params.getContent().getContent();
     auto req = api.restoreRequest();
-    auto dataString = kj::str(data);
+    auto dataString = kj::heapString((char *)data.begin(), 7);
     kj::String port;
     KJ_IF_MAYBE(i, dataString.findFirst(' ')) {
       port = kj::heapString(dataString.slice(0, *i));
+      KJ_DBG("data: ", data);
+      KJ_DBG("port: ", dataString.slice(0, *i));
+      KJ_DBG("token: ", data.slice(*i + 1, data.size()));
       req.setToken(data.slice(*i + 1, data.size()));
     } else {
-      KJ_FAIL_REQUIRE("space not found in data");
+      KJ_FAIL_REQUIRE("`space` character not found in data");
     }
     bool perms[1] = {true};
     req.setRequiredPermissions(perms);
       KJ_LOG(WARNING, "putting");
-    return req.send().then([content](auto args) mutable {
+    return req.send().then([this, content, KJ_MVCAP(port)](auto args) mutable {
       KJ_LOG(WARNING, "putten");
-      return args.getCap().template castAs<TestInterface>().fooRequest().send().then([content](auto args) mutable {
+      auto req = args.getCap().template castAs<sandstorm::IpInterface>().listenTcpRequest();
+      req.setPortNum(atoi(port.cStr()));
+      auto paf = kj::newPromiseAndFulfiller<void>();
+      req.setPort(kj::heap<TcpPortImpl>(kj::mv(paf.fulfiller)));
+      return req.send().then([this, content](auto args) mutable {
+        handle = args.getHandle();
         content.setMimeType("text/html");
         content.setStatusCode(sandstorm::WebSession::Response::SuccessCode::OK);
-        content.getBody().setBytes(args.getB().asBytes());
       });
+      // req.setAddress("build.sandstorm.io");
+      // auto req2 = req.send().getHost().getTcpPortRequest();
+      // req2.setPortNum(80);
+      // auto req3 = req2.send().getPort().connectRequest();
+      // req3.setDownstream(params.getContext().getResponseStream());
+      // auto req4 = req3.send().getUpstream().writeRequest();
+      // char * httpReq = "GET / HTTP/1.1\r\nHost: build.sandstorm.io\r\nConnection: close\r\n\r\n";
+      // req4.setData(kj::ArrayPtr<kj::byte>((kj::byte*)httpReq, strlen(httpReq)));
+      // return req4.send().then([content](auto args) mutable {
+      // });
     }, [](kj::Exception err) {
       KJ_LOG(WARNING, "some error putting", err);
     });
@@ -189,6 +221,7 @@ public:
   }
 
 private:
+  sandstorm::Handle::Client handle;
   bool canWrite;
   // True if the user has write permission.
   sandstorm::SessionContext::Client sessionContext;
