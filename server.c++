@@ -164,12 +164,24 @@ public:
     bool perms[1] = {true};
     req.setRequiredPermissions(perms);
       KJ_LOG(WARNING, "putting");
-    return req.send().then([content](auto args) mutable {
-      KJ_LOG(WARNING, "putten");
-      return args.getCap().template castAs<TestInterface>().fooRequest().send().then([content](auto args) mutable {
-        content.setMimeType("text/html");
-        content.setStatusCode(sandstorm::WebSession::Response::SuccessCode::OK);
-        content.getBody().setBytes(args.getB().asBytes());
+    return req.send().then([this, content](auto args) mutable {
+      KJ_LOG(WARNING, "saving");
+      auto req = api.saveRequest();
+      req.setCap(args.getCap());
+      return req.send().then([this, content](auto args) mutable {
+      KJ_LOG(WARNING, "restoring again");
+        auto req = api.restoreRequest();
+        req.setToken(args.getToken());
+        bool perms[1] = {true};
+        req.setRequiredPermissions(perms);
+        return req.send().then([content](auto args) mutable {
+      KJ_LOG(WARNING, "done restoring");
+          return args.getCap().template castAs<TestInterface>().fooRequest().send().then([content](auto args) mutable {
+            content.setMimeType("text/html");
+            content.setStatusCode(sandstorm::WebSession::Response::SuccessCode::OK);
+            content.getBody().setBytes(args.getB().asBytes());
+          });
+        });
       });
     }, [](kj::Exception err) {
       KJ_LOG(WARNING, "some error putting", err);
