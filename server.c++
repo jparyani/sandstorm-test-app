@@ -132,7 +132,9 @@ public:
     auto path = context.getParams().getPath();
     if (path == "offer" || path == "offer/") {
       auto req = sessionContext.offerRequest();
-      req.setCap(kj::heap<TestInterfaceImpl>());
+      auto resReq = api.restoreRequest();
+      resReq.setToken(requestToken);
+      req.setCap(resReq.send().getCap().castAs<sandstorm::PowerboxCapability>());
       return req.send().then([context](auto args) mutable {
         auto response = context.getResults();
         auto content = response.initContent();
@@ -183,6 +185,7 @@ public:
       KJ_DBG("port: ", dataString.slice(0, *i));
       KJ_DBG("token: ", data.slice(*i + 1, data.size()));
       req.setToken(data.slice(*i + 1, data.size()));
+      requestToken = kj::heapArray<kj::byte>(data.slice(*i + 1, data.size()));
     } else {
       KJ_FAIL_REQUIRE("`space` character not found in data");
     }
@@ -226,6 +229,7 @@ private:
   // True if the user has write permission.
   sandstorm::SessionContext::Client sessionContext;
   sandstorm::SandstormApi<>::Client api;
+  kj::Array<kj::byte> requestToken;
 
   kj::Promise<void> readFile(
       kj::StringPtr filename, GetContext context, kj::StringPtr contentType) {
