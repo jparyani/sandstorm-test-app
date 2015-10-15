@@ -9,7 +9,7 @@ const pkgdef :Spk.PackageDefinition = (
   # The package definition. Note that the spk tool looks specifically for the
   # "pkgdef" constant.
 
-  id = "xnk8j642gzvxuxq5axts9qzg578rc4gmg1kr8qqqad81wgvan6z0",
+  id = "qkag0k1ta3guun74g4rxx4xfqun8a3d7vsagh3843cvvxhh6n8s0",
   # Your app ID is actually its public key. The private key was placed in
   # your keyring. All updates must be signed with the same key.
 
@@ -19,11 +19,11 @@ const pkgdef :Spk.PackageDefinition = (
 
     appVersion = 0,  # Increment this for every release.
 
-    appTitle = (defaultText = "IpInterfaceTest"),
+    appTitle = (defaultText = "WebPublishingTest"),
     appMarketingVersion = (defaultText = "0.1.0"),
     actions = [
       # Define your "new document" handlers here.
-      ( title = (defaultText = "New IpInterfaceTest"),
+      ( title = (defaultText = "New WebPublishingTest"),
         command = .myCommand
         # The command to run when starting for the first time. (".myCommand"
         # is just a constant defined at the bottom of the file.)

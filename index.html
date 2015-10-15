@@ -3,37 +3,28 @@
   <head>
   </head>
   <body>
-    <input id="request-port" type="text">
-    <button id="request">Request</button>
-    <div id="results"></div>
+    <button id="shutdown">Shut down server</button>
+    <span id="public-address"></span>
     <script type='text/javascript'>
-    document.getElementById("request").addEventListener("click", function () {
-      var rpcId = Math.random();
-      window.parent.postMessage({powerboxRequest: {rpcId: rpcId}}, "*");
-      window.addEventListener("message", function (event) {
-         if (event.data.rpcId === rpcId) {
-            if (event.data.error) {
-              console.error("rpc errored:", event.data.error);
-              return;
-            }
-            var xhr = new XMLHttpRequest();
-            xhr.open("PUT", "/", true);
-
-            // Hack to pass bytes through unprocessed.
-            xhr.overrideMimeType("text/plain; charset=x-user-defined");
-
-            xhr.onreadystatechange = function(e) {
-              if (this.readyState == 4 && this.status == 200) {
-                var res = document.createElement("p");
-                res.setAttribute("id", "request-result");
-                res.textContent = "request: " + this.responseText;
-                document.getElementById("results").appendChild(res);
-              }
-            };
-            xhr.send(document.getElementById("request-port").value + " " + event.data.token);
-         }
-       }, false);
+    document.getElementById("shutdown").addEventListener("click", function () {
+      window.location = "/shutdown";
     });
+    function startup() {
+      var xhr = new XMLHttpRequest();
+      xhr.open("GET", "/publicid", true);
+
+      // Hack to pass bytes through unprocessed.
+      xhr.overrideMimeType("text/plain; charset=x-user-defined");
+
+      xhr.onreadystatechange = function(e) {
+        if (this.readyState == 4 && this.status == 200) {
+          var res = document.getElementById("public-address");
+          res.textContent = this.responseText;
+        }
+      };
+      xhr.send();
+    }
+    startup();
     </script>
   </body>
 </html>
