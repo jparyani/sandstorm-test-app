@@ -4,7 +4,7 @@
   </head>
   <body>
     <button id="shutdown">Shut down server</button>
-    <span id="public-address"></span>
+    <div id="results"></div>
     <script type='text/javascript'>
     document.getElementById("shutdown").addEventListener("click", function () {
       window.location = "/shutdown";
@@ -18,8 +18,10 @@
 
       xhr.onreadystatechange = function(e) {
         if (this.readyState == 4 && this.status == 200) {
-          var res = document.getElementById("public-address");
+          var res = document.createElement("p");
+          res.setAttribute("id", "public-address");
           res.textContent = this.responseText;
+          document.getElementById("results").appendChild(res);
         }
       };
       xhr.send();
