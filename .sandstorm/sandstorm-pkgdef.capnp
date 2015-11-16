@@ -52,7 +52,6 @@ const pkgdef :Spk.PackageDefinition = (
         # so we hide them. Note that /dev, /var, and /tmp are implicitly
         # hidden because Sandstorm itself provides them.
       ),
-      ( sourcePath = "/home/jason/workspace/sandstorm" )
     ]
   ),
 
@@ -70,7 +69,7 @@ const pkgdef :Spk.PackageDefinition = (
 
 const myCommand :Spk.Manifest.Command = (
   # Here we define the command used to start up your server.
-  argv = ["/server"],
+  argv = ["/opt/app/server"],
   environ = [
     # Note that this defines the *entire* environment seen by your app.
     (key = "PATH", value = "/usr/local/bin:/usr/bin:/bin"),
