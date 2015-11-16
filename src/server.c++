@@ -43,7 +43,7 @@
 #include <sandstorm/grain.capnp.h>
 #include <sandstorm/web-session.capnp.h>
 #include <sandstorm/hack-session.capnp.h>
-#include <test.capnp.h>
+#include <test-app.capnp.h>
 
 namespace {
 

@@ -2,6 +2,6 @@
 
 using Grain = import "/sandstorm/grain.capnp";
 
-interface TestInterface extends (Grain.AppPersistent(Text), Grain.PowerboxCapability) {
+interface TestInterface extends (Grain.AppPersistent(Text)) {
   foo @0 (a :Text) -> (b: Text);
 }
