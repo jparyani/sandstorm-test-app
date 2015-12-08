@@ -49,9 +49,8 @@ tmp/.ekam-run: tmp/ekam-bin src/* src/sandstorm/* tmp/.deps
 	CC="$(CC)" CXX="$(CXX)" CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS2)" LIBS="$(LIBS)" tmp/ekam-bin -j$(PARALLEL)
 	@touch tmp/.ekam-run
 
-continuous: 
-	CC="$(CC)" CXX="$(CXX)" CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS2)" LIBS="$(LIBS)" tmp/ekam-bin -j$(PARALLEL) -c -n :41315
+continuous:
+	CC="$(CC)" CXX="$(CXX)" CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS2)" LIBS="$(LIBS)" tmp/ekam-bin -j$(PARALLEL) -c -n :41316
 
 server: tmp/.ekam-run
 	cp tmp/server server
-
