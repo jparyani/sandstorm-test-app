@@ -3,11 +3,14 @@
   <head>
   </head>
   <body>
-    <button id="request">Request</button>
-    <button id="offer">Offer</button>
+    <button id="requestNoPerm">Request No Permissions Required</button>
+    <button id="requestWritePerm">Request With Permissions Required</button>
+    <button id="offerNoPerm">Offer No Permissions Required</button>
+    <button id="offerWithPerm">Offer With Permissions Required</button>
+    <button id="test">TestInterface2 test</button>
     <div id="results"></div>
     <script type='text/javascript'>
-    document.getElementById("request").addEventListener("click", function () {
+    document.getElementById("requestNoPerm").addEventListener("click", function () {
       var rpcId = Math.random();
       window.parent.postMessage({powerboxRequest: {rpcId: rpcId}}, "*");
       window.addEventListener("message", function (event) {
@@ -17,7 +20,7 @@
               return;
             }
             var xhr = new XMLHttpRequest();
-            xhr.open("PUT", "/", true);
+            xhr.open("PUT", "/noPerm", true);
 
             // Hack to pass bytes through unprocessed.
             xhr.overrideMimeType("text/plain; charset=x-user-defined");
@@ -25,7 +28,7 @@
             xhr.onreadystatechange = function(e) {
               if (this.readyState == 4 && this.status == 200) {
                 var res = document.createElement("p");
-                res.setAttribute("id", "request-result");
+                res.setAttribute("id", "request-no-perm-result");
                 res.textContent = "request: " + this.responseText;
                 document.getElementById("results").appendChild(res);
               }
@@ -34,9 +37,36 @@
          }
        }, false);
     });
-    document.getElementById("offer").addEventListener("click", function () {
+    document.getElementById("requestWritePerm").addEventListener("click", function () {
+      var rpcId = Math.random();
+      window.parent.postMessage({powerboxRequest: {rpcId: rpcId}}, "*");
+      window.addEventListener("message", function (event) {
+         if (event.data.rpcId === rpcId) {
+            if (event.data.error) {
+              console.error("rpc errored:", event.data.error);
+              return;
+            }
+            var xhr = new XMLHttpRequest();
+            xhr.open("PUT", "/writePerm", true);
+
+            // Hack to pass bytes through unprocessed.
+            xhr.overrideMimeType("text/plain; charset=x-user-defined");
+
+            xhr.onreadystatechange = function(e) {
+              if (this.readyState == 4 && this.status == 200) {
+                var res = document.createElement("p");
+                res.setAttribute("id", "request-write-perm-result");
+                res.textContent = "request: " + this.responseText;
+                document.getElementById("results").appendChild(res);
+              }
+            };
+            xhr.send(event.data.token);
+         }
+       }, false);
+    });
+    document.getElementById("offerNoPerm").addEventListener("click", function () {
       var xhr = new XMLHttpRequest();
-      xhr.open("GET", "/offer", true);
+      xhr.open("GET", "/offerNoPermissions", true);
 
       // Hack to pass bytes through unprocessed.
       xhr.overrideMimeType("text/plain; charset=x-user-defined");
@@ -44,12 +74,56 @@
       xhr.onreadystatechange = function(e) {
         if (this.readyState == 4 && this.status == 200) {
           var res = document.createElement("p");
-          res.setAttribute("id", "offer-result");
+          res.setAttribute("id", "offer-no-perm-result");
           res.textContent = "offer: " + this.responseText;
           document.getElementById("results").appendChild(res);
         }
       };
       xhr.send();
+    });
+    document.getElementById("offerWithPerm").addEventListener("click", function () {
+      var xhr = new XMLHttpRequest();
+      xhr.open("GET", "/offerWritePermission", true);
+
+      // Hack to pass bytes through unprocessed.
+      xhr.overrideMimeType("text/plain; charset=x-user-defined");
+
+      xhr.onreadystatechange = function(e) {
+        if (this.readyState == 4 && this.status == 200) {
+          var res = document.createElement("p");
+          res.setAttribute("id", "offer-with-perm-result");
+          res.textContent = "offer: " + this.responseText;
+          document.getElementById("results").appendChild(res);
+        }
+      };
+      xhr.send();
+    });
+    document.getElementById("test").addEventListener("click", function () {
+      var rpcId = Math.random();
+      window.parent.postMessage({powerboxRequest: {rpcId: rpcId}}, "*");
+      window.addEventListener("message", function (event) {
+         if (event.data.rpcId === rpcId) {
+            if (event.data.error) {
+              console.error("rpc errored:", event.data.error);
+              return;
+            }
+            var xhr = new XMLHttpRequest();
+            xhr.open("PUT", "/testInterface2", true);
+
+            // Hack to pass bytes through unprocessed.
+            xhr.overrideMimeType("text/plain; charset=x-user-defined");
+
+            xhr.onreadystatechange = function(e) {
+              if (this.readyState == 4 && this.status == 200) {
+                var res = document.createElement("p");
+                res.setAttribute("id", "request-testInterface2-result");
+                res.textContent = "request: " + this.responseText;
+                document.getElementById("results").appendChild(res);
+              }
+            };
+            xhr.send(event.data.token);
+         }
+       }, false);
     });
     </script>
   </body>

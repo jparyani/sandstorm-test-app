@@ -85,12 +85,34 @@ kj::Maybe<kj::AutoCloseFd> tryOpen(kj::StringPtr name, int flags, mode_t mode = 
   return kj::AutoCloseFd(fd);
 }
 
-class TestInterfaceImpl final: public TestInterface::Server {
+class TestInterface2Impl final: public TestInterface2::Server {
+public:
+  TestInterface2Impl() {
+    KJ_LOG(WARNING, "constructing testInterface2");
+  }
   kj::Promise<void> foo(FooContext context) override {
-    context.getResults().setB("footest");
+    context.getResults().setB("TestInterface2test");
     return kj::READY_NOW;
   }
   kj::Promise<void> save(SaveContext context) override {
+    KJ_LOG(WARNING, "saving testInterface2");
+    context.getResults().setObjectId("2");
+    return kj::READY_NOW;
+  }
+};
+
+class TestInterfaceImpl final: public TestInterface::Server {
+public:
+  TestInterfaceImpl() {
+    KJ_LOG(WARNING, "constructing testInterface");
+  }
+  kj::Promise<void> foo(FooContext context) override {
+    context.getResults().setB(kj::heap<TestInterface2Impl>());
+    return kj::READY_NOW;
+  }
+  kj::Promise<void> save(SaveContext context) override {
+    KJ_LOG(WARNING, "saving testInterface");
+    context.getResults().setObjectId("1");
     return kj::READY_NOW;
   }
 };
@@ -130,8 +152,24 @@ public:
 
 
     auto path = context.getParams().getPath();
-    if (path == "offer" || path == "offer/") {
+    if (path == "offerNoPermissions" || path == "offerNoPermissions/") {
       auto req = sessionContext.offerRequest();
+      bool perms[1] = {false};
+      req.setRequiredPermissions(perms);
+      req.setCap(kj::heap<TestInterfaceImpl>());
+      return req.send().then([context](auto args) mutable {
+        auto response = context.getResults();
+        auto content = response.initContent();
+        content.setMimeType("text/plain");
+        content.setStatusCode(sandstorm::WebSession::Response::SuccessCode::OK);
+        content.getBody().setBytes(kj::str("success").asBytes());
+      }, [](auto err) {
+        KJ_LOG(ERROR, "error offering:", err);
+      });
+    } else if (path == "offerWritePermission" || path == "offerWritePermission/") {
+      auto req = sessionContext.offerRequest();
+      bool perms[1] = {true};
+      req.setRequiredPermissions(perms);
       req.setCap(kj::heap<TestInterfaceImpl>());
       return req.send().then([context](auto args) mutable {
         auto response = context.getResults();
@@ -159,21 +197,54 @@ public:
     auto content = response.initContent();
     auto params = context.getParams();
     auto data = params.getContent().getContent();
+    auto path = params.getPath();
     auto req = api.restoreRequest();
     req.setToken(data);
-    bool perms[3] = {true, false, true};
-    req.setRequiredPermissions(perms);
       KJ_LOG(WARNING, "putting");
-    return req.send().then([content](auto args) mutable {
+    if (path == "noPerm" || path == "noPerm/") {
+      bool perms[1] = {false};
+      req.setRequiredPermissions(perms);
+      return req.send().then([this, path, content](auto args) mutable {
       KJ_LOG(WARNING, "putten");
-      return args.getCap().template castAs<TestInterface>().fooRequest().send().then([content](auto args) mutable {
-        content.setMimeType("text/html");
-        content.setStatusCode(sandstorm::WebSession::Response::SuccessCode::OK);
-        content.getBody().setBytes(args.getB().asBytes());
+        auto testInterface = args.getCap().template castAs<TestInterface>();
+        auto req = sessionContext.offerRequest();
+        req.setCap(testInterface.fooRequest().send().getB());
+        return req.send().then([content](auto args) mutable {
+          content.setMimeType("text/html");
+          content.setStatusCode(sandstorm::WebSession::Response::SuccessCode::OK);
+          content.getBody().setBytes(kj::str("success").asBytes());
+        });
       });
-    }, [](kj::Exception err) {
-      KJ_LOG(WARNING, "some error putting", err);
-    });
+    } else if (path == "writePerm" || path == "writePerm/") {
+      bool perms[1] = {true};
+      req.setRequiredPermissions(perms);
+      return req.send().then([this, path, content](auto args) mutable {
+      KJ_LOG(WARNING, "putten");
+        auto testInterface = args.getCap().template castAs<TestInterface>();
+        auto req = sessionContext.offerRequest();
+        req.setCap(testInterface.fooRequest().send().getB());
+        return req.send().then([content](auto args) mutable {
+          content.setMimeType("text/html");
+          content.setStatusCode(sandstorm::WebSession::Response::SuccessCode::OK);
+          content.getBody().setBytes(kj::str("success").asBytes());
+        });
+      });
+    } else if (path == "testInterface2" || path == "testInterface2/")  {
+      bool perms[1] = {false};
+      req.setRequiredPermissions(perms);
+      return req.send().then([this, path, content](auto args) mutable {
+        auto testInterface2 = args.getCap().template castAs<TestInterface2>();
+        return testInterface2.fooRequest().send().then([content](auto args) mutable {
+          content.setMimeType("text/html");
+          content.setStatusCode(sandstorm::WebSession::Response::SuccessCode::OK);
+          content.getBody().setBytes(args.getB().asBytes());
+        });
+      }, [](auto err) {
+        KJ_LOG(ERROR, "error putting:", err);
+      });
+    } else {
+      KJ_FAIL_REQUIRE("No path recognized");
+    }
   }
 
   kj::Promise<void> delete_(DeleteContext context) override {
@@ -228,6 +299,16 @@ public:
     // for the owner to assign varying permissions to individual people.
     auto perms = viewInfo.initPermissions(1);
     perms[0].setName("write");
+    auto roles = viewInfo.initRoles(2);
+    auto adminRole = roles[0];
+    adminRole.getTitle().setDefaultText("writer");
+    adminRole.initPermissions(1).set(0, true);
+    adminRole.getVerbPhrase().setDefaultText("can write");
+    adminRole.setDefault(true);
+    auto readerRole = roles[1];
+    readerRole.getTitle().setDefaultText("reader");
+    readerRole.initPermissions(1).set(0, false);
+    readerRole.getVerbPhrase().setDefaultText("can read");
 
     return kj::READY_NOW;
   }
@@ -247,7 +328,13 @@ public:
 
   kj::Promise<void> restore(RestoreContext context) override {
     KJ_LOG(WARNING, "restoring");
-    context.getResults().setCap(kj::heap<TestInterfaceImpl>());
+    if (context.getParams().getObjectId() == "1") {
+      context.getResults().setCap(kj::heap<TestInterfaceImpl>());
+    } else if (context.getParams().getObjectId() == "2") {
+      context.getResults().setCap(kj::heap<TestInterface2Impl>());
+    } else {
+      KJ_FAIL_REQUIRE("Must have an object Id");
+    }
     return kj::READY_NOW;
   }
 

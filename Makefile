@@ -14,10 +14,11 @@ dev: server sandstorm-pkgdef.capnp empty
 clean:
 	rm -rf tmp server package.spk empty
 
-tmp/genfiles:
+tmp/genfiles: test.capnp
 	@mkdir -p tmp
-	capnp compile --src-prefix=$(SANDSTORM_CAPNP_DIR) -oc++:tmp $(SANDSTORM_CAPNP_DIR)/sandstorm/*.capnp
-	capnp compile -I $(SANDSTORM_CAPNP_DIR) -oc++:tmp test.capnp
+	# capnp compile --src-prefix=$(SANDSTORM_CAPNP_DIR) -oc++:tmp $(SANDSTORM_CAPNP_DIR)/sandstorm/*.capnp
+	cd $(SANDSTORM_CAPNP_DIR) && $(SANDSTORM_CAPNP_DIR)/../bin/capnp compile -oc++:/home/jason/workspace/sandstorm-test/tmp sandstorm/*.capnp
+	$(SANDSTORM_CAPNP_DIR)/../bin/capnp compile -I $(SANDSTORM_CAPNP_DIR) -oc++:tmp test.capnp
 	@mkdir -p tmp/sandstorm
 	@cp $(SANDSTORM_CAPNP_DIR)/sandstorm/util.h tmp/sandstorm/
 	@cp $(SANDSTORM_CAPNP_DIR)/sandstorm/util.c++ tmp/sandstorm/

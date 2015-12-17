@@ -9,7 +9,7 @@ const pkgdef :Spk.PackageDefinition = (
   # The package definition. Note that the spk tool looks specifically for the
   # "pkgdef" constant.
 
-  id = "jm40yaw7zvnxyggqt2dddp5ztt0f5wku7a8wfz8uzn9cjus46ygh",
+  id = "10p6jj3zzkh5v9ymmcmjaj8cj2yqx29j1g1vku7nt71pt1c28cmh",
   # Your app ID is actually its public key. The private key was placed in
   # your keyring. All updates must be signed with the same key.
 
@@ -17,13 +17,13 @@ const pkgdef :Spk.PackageDefinition = (
     # This manifest is included in your app package to tell Sandstorm
     # about your app.
 
-    appVersion = 2,  # Increment this for every release.
+    appVersion = 0,  # Increment this for every release.
 
-    appTitle = (defaultText = "PowerboxTest"),
+    appTitle = (defaultText = "PowerboxMembraneTest"),
     appMarketingVersion = (defaultText = "0.1.0"),
     actions = [
       # Define your "new document" handlers here.
-      ( title = (defaultText = "New PowerboxTest"),
+      ( title = (defaultText = "New PowerboxMembraneTest"),
         command = .myCommand
         # The command to run when starting for the first time. (".myCommand"
         # is just a constant defined at the bottom of the file.)
