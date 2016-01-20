@@ -125,33 +125,11 @@ public:
 
   kj::Promise<void> get(GetContext context) override {
     // HTTP GET request.
-
     KJ_LOG(WARNING, "getting");
 
-
     auto path = context.getParams().getPath();
-    if (path == "offer" || path == "offer/") {
-      auto req = sessionContext.offerRequest();
-      req.setCap(kj::heap<TestInterfaceImpl>());
-      return req.send().then([context](auto args) mutable {
-        auto response = context.getResults();
-        auto content = response.initContent();
-        content.setMimeType("text/plain");
-        content.setStatusCode(sandstorm::WebSession::Response::SuccessCode::OK);
-        content.getBody().setBytes(kj::str("success").asBytes());
-      }, [](auto err) {
-        KJ_LOG(ERROR, "error offering:", err);
-      });
-    }
 
     return readFile("index.html", context, "text/html");
-    // return sessionContext.requestRequest().send().then([content](auto args) mutable {
-    //   KJ_LOG(WARNING, "gotten");
-    //   return args.getCap().template castAs<TestInterface>().fooRequest().send().then([content](auto args) mutable {
-
-    //     content.getBody().setBytes(args.getB().asBytes());
-    //   });
-    // });
   }
 
   kj::Promise<void> put(PutContext context) override {
@@ -166,10 +144,10 @@ public:
       KJ_LOG(WARNING, "putting");
     return req.send().then([content](auto args) mutable {
       KJ_LOG(WARNING, "putten");
-      return args.getCap().template castAs<TestInterface>().fooRequest().send().then([content](auto args) mutable {
+      return args.getCap().template castAs<sandstorm::WebSession>().getRequest().send().then([content](auto args) mutable {
         content.setMimeType("text/html");
         content.setStatusCode(sandstorm::WebSession::Response::SuccessCode::OK);
-        content.getBody().setBytes(args.getB().asBytes());
+        content.getBody().setBytes(args.getContent().getBody().getBytes());
       });
     }, [](kj::Exception err) {
       KJ_LOG(WARNING, "some error putting", err);

@@ -1,55 +1,104 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <style>
+    #inline-powerbox {
+      background: transparent;
+      position: absolute;
+      border: 2px inset;
+    }
+    #input-mirror {
+      position: absolute;
+      border-top: 2px inset;
+      border-left: 2px inset;
+      visibility: hidden;
+    }
+    #input-mirror pre {
+      font: inherit;
+      display: inline;
+    }
+    #input-mirror span {
+      outline: black 1px solid;
+      animation: blink 1s steps(2, start) infinite;
+      -webkit-animation: blink 1s steps(2, start) infinite;
+      visibility: visible;
+    }
+    #input-wrapper {
+      position: relative;
+      font: 13.3333px Arial;
+
+    }
+    @keyframes blink {
+      to {
+        visibility: hidden;
+      }
+    }
+    @-webkit-keyframes blink {
+      to {
+        visibility: hidden;
+      }
+    }
+    </style>
   </head>
   <body>
-    <button id="request">Request</button>
-    <button id="offer">Offer</button>
+  <input type="text" id="random-test">
+    <div id="input-wrapper">
+      <div id="input-mirror"></div>
+      <input type="text" id="inline-powerbox">
+    </div>
     <div id="results"></div>
     <script type='text/javascript'>
-    document.getElementById("request").addEventListener("click", function () {
+    document.getElementById("inline-powerbox").addEventListener("focus", function (event) {
       var rpcId = Math.random();
-      window.parent.postMessage({powerboxRequest: {rpcId: rpcId}}, "*");
+      console.log(event);
+      document.getElementById("input-mirror").innerHTML = "&#8203;<span></span>";
+      // TODO(soon): check selectionStart/End and position cursor there
+      window.parent.postMessage({inlinePowerbox: {rpcId: rpcId}}, "*");
       window.addEventListener("message", function (event) {
          if (event.data.rpcId === rpcId) {
             if (event.data.error) {
-              console.error("rpc errored:", event.data.error);
+              console.error("rpc errored:", event.data.event.value);
               return;
             }
-            var xhr = new XMLHttpRequest();
-            xhr.open("PUT", "/", true);
-
-            // Hack to pass bytes through unprocessed.
-            xhr.overrideMimeType("text/plain; charset=x-user-defined");
-
-            xhr.onreadystatechange = function(e) {
-              if (this.readyState == 4 && this.status == 200) {
-                var res = document.createElement("p");
-                res.setAttribute("id", "request-result");
-                res.textContent = "request: " + this.responseText;
-                document.getElementById("results").appendChild(res);
+            var eventData = event.data.event;
+            if (eventData.keyCode) {
+              var elem = document.getElementById("inline-powerbox");
+              var keyCode = event.data.event.keyCode;
+              if (elem.selectionStart !== elem.selectionEnd) {
+                elem.value = elem.value.slice(0, elem.selectionStart) + elem.value.slice(elem.selectionEnd);
+                // TODO(soon): send rpc message saying to bail
               }
-            };
-            xhr.send(event.data.token);
+              if (keyCode === 8) {
+                elem.value = elem.value.slice(0, -1);
+              } else {
+                elem.value = elem.value + String.fromCharCode(event.data.event.keyCode);
+              }
+              // TODO(soon): escape html
+              document.getElementById("input-mirror").innerHTML = "<pre>&#8203;" + elem.value + "</pre>" + "<span></span>";
+              // elem.focus();
+              // elem.setSelectionRange(event.data.event.selectionStart, event.data.event.selectionEnd);
+              return;
+
+            } else if (eventData.webSession) {
+              console.log("websession", eventData);
+              var xhr = new XMLHttpRequest();
+              xhr.open("PUT", "/", true);
+
+              // Hack to pass bytes through unprocessed.
+              xhr.overrideMimeType("text/plain; charset=x-user-defined");
+
+              xhr.onreadystatechange = function(e) {
+                if (this.readyState == 4 && this.status == 200) {
+                  var res = document.createElement("p");
+                  res.setAttribute("id", "request-result");
+                  res.textContent = "request: " + this.responseText;
+                  document.getElementById("results").appendChild(res);
+                }
+              };
+              xhr.send(eventData.webSession.token);
+            }
          }
        }, false);
-    });
-    document.getElementById("offer").addEventListener("click", function () {
-      var xhr = new XMLHttpRequest();
-      xhr.open("GET", "/offer", true);
-
-      // Hack to pass bytes through unprocessed.
-      xhr.overrideMimeType("text/plain; charset=x-user-defined");
-
-      xhr.onreadystatechange = function(e) {
-        if (this.readyState == 4 && this.status == 200) {
-          var res = document.createElement("p");
-          res.setAttribute("id", "offer-result");
-          res.textContent = "offer: " + this.responseText;
-          document.getElementById("results").appendChild(res);
-        }
-      };
-      xhr.send();
     });
     </script>
   </body>

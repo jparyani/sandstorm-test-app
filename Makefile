@@ -54,3 +54,9 @@ continuous:
 
 server: tmp/.ekam-run
 	cp tmp/server server
+
+package.spk: server sandstorm-pkgdef.capnp
+	spk pack package.spk
+
+dev: server sandstorm-pkgdef.capnp
+	spk dev
