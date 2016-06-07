@@ -18,3 +18,7 @@ proc/cpuinfo
 sandstorm-manifest
 usr/lib/x86_64-linux-gnu/libstdc++.so.6
 usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.20
+usr/local/lib/libcapnp-0.6-dev.so
+usr/local/lib/libcapnp-rpc-0.6-dev.so
+usr/local/lib/libkj-0.6-dev.so
+usr/local/lib/libkj-async-0.6-dev.so

@@ -39,10 +39,8 @@
 #include <dirent.h>
 #include <errno.h>
 
-#include <sandstorm/util.h>
 #include <sandstorm/grain.capnp.h>
 #include <sandstorm/web-session.capnp.h>
-#include <sandstorm/hack-session.capnp.h>
 #include <test-app.capnp.h>
 
 namespace {
@@ -145,35 +143,65 @@ public:
     }
 
     return readFile("index.html", context, "text/html");
-    // return sessionContext.requestRequest().send().then([content](auto args) mutable {
-    //   KJ_LOG(WARNING, "gotten");
-    //   return args.getCap().template castAs<TestInterface>().fooRequest().send().then([content](auto args) mutable {
-
-    //     content.getBody().setBytes(args.getB().asBytes());
-    //   });
-    // });
   }
 
   kj::Promise<void> put(PutContext context) override {
-    auto response = context.getResults();
-    auto content = response.initContent();
+    auto results = context.getResults();
+    auto content = results.initContent();
     auto params = context.getParams();
+    auto path = params.getPath();
     auto data = params.getContent().getContent();
-    auto req = api.restoreRequest();
-    req.setToken(data);
-    bool perms[1] = {true};
-    req.setRequiredPermissions(perms);
-      KJ_LOG(WARNING, "putting");
-    return req.send().then([content](auto args) mutable {
-      KJ_LOG(WARNING, "putten");
-      return args.getCap().template castAs<TestInterface>().fooRequest().send().then([content](auto args) mutable {
+    auto req = api.claimRequestRequest();
+    auto requestToken = req.initRequestToken(data.size());
+    memcpy(requestToken.begin(), data.begin(), data.size());
+    if (path == "claim") {
+      KJ_LOG(WARNING, "putting to /claim");
+      bool perms[1] = {true};
+      req.setRequiredPermissions(perms);
+      return req.send().then([this, content](auto response) mutable {
+        auto cap = response.getCap().template castAs<TestInterface>();
+        return cap.fooRequest().send().then([content](auto response) mutable {
+          content.setMimeType("text/html");
+          content.setStatusCode(sandstorm::WebSession::Response::SuccessCode::OK);
+          content.getBody().setBytes(response.getB().asBytes());
+        });
+      });
+    } else if (path == "claim-and-save") {
+      KJ_LOG(WARNING, "putting to /claim-and-save");
+      bool perms[1] = {true};
+      req.setRequiredPermissions(perms);
+      return req.send().then([this, content](auto response) mutable {
+        auto cap = response.getCap().template castAs<TestInterface>();
+        auto req = api.saveRequest();
+        req.setCap(cap);
+        return req.send().then([this, content](auto response) mutable {
+          auto req = api.restoreRequest();
+          req.setToken(response.getToken());
+          return req.send().then([content](auto response) mutable {
+            auto cap = response.getCap().template castAs<TestInterface>();
+            return cap.fooRequest().send().then([content](auto response) mutable {
+              content.setMimeType("text/html");
+              content.setStatusCode(sandstorm::WebSession::Response::SuccessCode::OK);
+              content.getBody().setBytes(response.getB().asBytes());
+            });
+          });
+        });
+      });
+    } else if (path == "claim-failing-requirements") {
+      KJ_LOG(WARNING, "putting to /claim-failing-requirements");
+      bool perms[3] = {true, false, true};
+      req.setRequiredPermissions(perms);
+      return req.send().then([this, content](auto response) mutable {
         content.setMimeType("text/html");
         content.setStatusCode(sandstorm::WebSession::Response::SuccessCode::OK);
-        content.getBody().setBytes(args.getB().asBytes());
+        content.getBody().setBytes(kj::str("successfully restored, but shouldn't have!").asBytes());
+      }).catch_([](kj::Exception err) {
+        KJ_LOG(WARNING, "some error putting", err);
       });
-    }, [](kj::Exception err) {
-      KJ_LOG(WARNING, "some error putting", err);
-    });
+    } else {
+      results.initClientError();
+      return kj::READY_NOW;
+    }
   }
 
   kj::Promise<void> delete_(DeleteContext context) override {
@@ -217,15 +245,6 @@ public:
 
     // Define a "write" permission. People who don't have this will get read-only access.
     //
-    // Currently, Sandstorm does not support assigning permissions to individuals. There are only
-    // three distinguishable permission levels:
-    // - The owner has all permissions.
-    // - People who know the grain's secret URL (e.g. because the owner shared it with them) can
-    //   open the grain but have no permissions.
-    // - Everyone else cannot even open the grain.
-    //
-    // Thus, only the grain owner will get our "write" permission, but someday it may be possible
-    // for the owner to assign varying permissions to individual people.
     auto perms = viewInfo.initPermissions(1);
     perms[0].setName("write");
 
@@ -270,25 +289,20 @@ public:
 
   kj::MainBuilder::Validity run() {
     // Set up RPC on file descriptor 3.
-    KJ_LOG(WARNING, "test1");
 
-    auto coreRedirector = kj::refcounted<sandstorm::CapRedirector>();
-    capnp::Capability::Client apiCap = kj::addRef(*coreRedirector);
+    auto paf = kj::newPromiseAndFulfiller<sandstorm::SandstormApi<>::Client>();
+    sandstorm::SandstormApi<>::Client apiCap(kj::mv(paf.promise));
 
     auto stream = ioContext.lowLevelProvider->wrapSocketFd(3);
     capnp::TwoPartyVatNetwork network(*stream, capnp::rpc::twoparty::Side::CLIENT);
-    auto rpcSystem = capnp::makeRpcServer(network, kj::heap<UiViewImpl>(apiCap.castAs<sandstorm::SandstormApi<>>()));
-    KJ_LOG(WARNING, "test2");
+    auto rpcSystem = capnp::makeRpcServer(network, kj::heap<UiViewImpl>(apiCap));
 
     // Get the SandstormApi default capability from the supervisor.
-    // TODO(soon):  We don't use this, but for some reason the connection doesn't come up if we
-    //   don't do this restore.  Cap'n Proto bug?  v8capnp bug?  Shell bug?
     {
-    KJ_LOG(WARNING, "test3");
       capnp::MallocMessageBuilder message;
       auto vatId = message.getRoot<capnp::rpc::twoparty::VatId>();
       vatId.setSide(capnp::rpc::twoparty::Side::SERVER);
-      coreRedirector->setTarget(rpcSystem.bootstrap(vatId));
+      paf.fulfiller->fulfill(rpcSystem.bootstrap(vatId).castAs<sandstorm::SandstormApi<>>());
     }
 
     kj::NEVER_DONE.wait(ioContext.waitScope);

@@ -22,5 +22,6 @@ set -euo pipefail
 # By default, this script does nothing.  You'll have to modify it as
 # appropriate for your application.
 export DEBIAN_FRONTEND=noninteractive
-apt-get install -y build-essential strace clang git
+apt-get update
+apt-get install -y build-essential strace clang git autoconf libtool
 exit 0

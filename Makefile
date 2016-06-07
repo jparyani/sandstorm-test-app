@@ -8,49 +8,30 @@ PARALLEL=$(shell nproc)
 
 LIBS=-lpthread
 
-REMOTE_ekam=https://github.com/sandstorm-io/ekam.git
 REMOTE_capnproto=https://github.com/sandstorm-io/capnproto.git
-REMOTE_sandstorm=https://github.com/sandstorm-io/sandstorm.git
 
 .PHONY: default clean
 
 default: server
 
 clean:
-	rm -rf tmp server
-
-deps: tmp/.deps
-
-tmp/.deps: deps/capnproto deps/ekam deps/sandstorm
-	@mkdir -p tmp
-	@touch tmp/.deps
+	rm -rf server
 
 deps/capnproto:
 	@mkdir -p deps
 	git clone $(REMOTE_capnproto) deps/capnproto
 
-deps/ekam:
-	@mkdir -p deps
-	git clone $(REMOTE_ekam) deps/ekam
-	@ln -s .. deps/ekam/deps
+/usr/local/bin/capnp: deps/capnproto
+	cd deps/capnproto/c++ && autoreconf -i && ./configure CXX=$(CXX) CC=$(CC) && make -j && sudo make install
 
-deps/sandstorm:
-	@mkdir -p deps
-	git clone $(REMOTE_sandstorm) deps/sandstorm
+tmp/include:
+	mkdir -p tmp/include
 
-tmp/ekam-bin: tmp/.deps
-	@mkdir -p tmp
-	@rm -f tmp/ekam-bin
-	@which ekam >/dev/null && ln -s "`which ekam`" tmp/ekam-bin || \
-	    (cd deps/ekam && $(MAKE) bin/ekam-bootstrap && \
-	    cd ../.. && ln -s ../deps/ekam/bin/ekam-bootstrap tmp/ekam-bin)
+tmp/include/test-app.capnp.h: tmp/include src/test-app.capnp /usr/local/bin/capnp
+	capnp compile -oc++:tmp/include -I/opt/sandstorm/latest/usr/include --src-prefix=src/ src/test-app.capnp
 
-tmp/.ekam-run: tmp/ekam-bin src/* src/sandstorm/* tmp/.deps
-	CC="$(CC)" CXX="$(CXX)" CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS2)" LIBS="$(LIBS)" tmp/ekam-bin -j$(PARALLEL)
-	@touch tmp/.ekam-run
+tmp/include/sandstorm/web-session.capnp.h: tmp/include /usr/local/bin/capnp
+	capnp compile -oc++:tmp/include --src-prefix=/opt/sandstorm/latest/usr/include /opt/sandstorm/latest/usr/include/sandstorm/util.capnp /opt/sandstorm/latest/usr/include/sandstorm/powerbox.capnp /opt/sandstorm/latest/usr/include/sandstorm/grain.capnp /opt/sandstorm/latest/usr/include/sandstorm/web-session.capnp
 
-continuous:
-	CC="$(CC)" CXX="$(CXX)" CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS2)" LIBS="$(LIBS)" tmp/ekam-bin -j$(PARALLEL) -c -n :41316
-
-server: tmp/.ekam-run
-	cp tmp/server server
+server: src/server.c++ tmp/include/test-app.capnp.h tmp/include/sandstorm/web-session.capnp.h
+	$(CXX) $(CXXFLAGS2) -Itmp/include -lkj -lkj-async -lcapnp -lcapnp-rpc -o server src/server.c++ tmp/include/test-app.capnp.c++ tmp/include/sandstorm/*.c++
