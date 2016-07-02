@@ -151,7 +151,7 @@ public:
     auto params = context.getParams();
     auto path = params.getPath();
     auto data = params.getContent().getContent();
-    auto req = api.claimRequestRequest();
+    auto req = sessionContext.claimRequestRequest();
     auto requestToken = req.initRequestToken(data.size());
     memcpy(requestToken.begin(), data.begin(), data.size());
     if (path == "claim") {
