@@ -4,10 +4,12 @@
   </head>
   <body>
     <button id="request">Request</button>
+    <button id="request-save-restore">Request (with save and restore)</button>
+    <button id="request-failing-requirements">Request (with failing requirements)</button>
     <button id="offer">Offer</button>
     <div id="results"></div>
     <script type='text/javascript'>
-    document.getElementById("request").addEventListener("click", function () {
+    function doRequest(path) {
       var rpcId = Math.random();
       window.parent.postMessage({powerboxRequest: {rpcId: rpcId}}, "*");
       window.addEventListener("message", function (event) {
@@ -17,7 +19,7 @@
               return;
             }
             var xhr = new XMLHttpRequest();
-            xhr.open("PUT", "/", true);
+            xhr.open("PUT", path, true);
 
             // Hack to pass bytes through unprocessed.
             xhr.overrideMimeType("text/plain; charset=x-user-defined");
@@ -33,6 +35,15 @@
             xhr.send(event.data.token);
          }
        }, false);
+    }
+    document.getElementById("request").addEventListener("click", function () {
+      doRequest("/claim");
+    });
+    document.getElementById("request-save-restore").addEventListener("click", function () {
+      doRequest("/claim-and-save");
+    });
+    document.getElementById("request-failing-requirements").addEventListener("click", function () {
+      doRequest("/claim-failing-requirements");
     });
     document.getElementById("offer").addEventListener("click", function () {
       var xhr = new XMLHttpRequest();
